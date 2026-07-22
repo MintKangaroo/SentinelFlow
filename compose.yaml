@@ -1,0 +1,103 @@
+name: sentinelflow
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinelflow}
+      POSTGRES_USER: ${POSTGRES_USER:-sentinelflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinelflow-dev-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [control-plane]
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis-data:/data
+    networks: [control-plane]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.130.1
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./deploy/otel/collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    networks: [control-plane]
+
+  api:
+    build:
+      context: .
+    environment:
+      SENTINELFLOW_ENVIRONMENT: development
+      SENTINELFLOW_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinelflow}:${POSTGRES_PASSWORD:-sentinelflow-dev-only}@postgres:5432/${POSTGRES_DB:-sentinelflow}
+      SENTINELFLOW_REDIS_URL: redis://redis:6379/0
+      SENTINELFLOW_OTEL_ENABLED: "true"
+      SENTINELFLOW_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "${API_PORT:-8000}:8000"
+    networks: [control-plane]
+
+  worker:
+    build:
+      context: .
+    command: ["celery", "-A", "sentinelflow.worker:celery_app", "worker", "--loglevel=INFO"]
+    environment:
+      SENTINELFLOW_ENVIRONMENT: development
+      SENTINELFLOW_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinelflow}:${POSTGRES_PASSWORD:-sentinelflow-dev-only}@postgres:5432/${POSTGRES_DB:-sentinelflow}
+      SENTINELFLOW_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A sentinelflow.worker:celery_app inspect ping -d celery@$${HOSTNAME} --timeout=3"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks: [control-plane]
+
+  web:
+    build:
+      context: ./web
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "${WEB_PORT:-3000}:8080"
+    networks: [control-plane]
+
+networks:
+  control-plane:
+
+volumes:
+  postgres-data:
+  redis-data:
