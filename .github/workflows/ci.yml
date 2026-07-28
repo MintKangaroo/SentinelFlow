@@ -2,7 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
+      - "feat/**"
+      - "fix/**"
+      - "docs/**"
   pull_request:
 
 permissions:

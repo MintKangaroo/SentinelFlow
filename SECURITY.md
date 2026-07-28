@@ -24,3 +24,10 @@ redacted audit events for rejected requests.
 
 Never submit real credentials, tokens, cookies, private keys, personal information, or
 raw authentication material in issues, logs, fixtures, or commits.
+
+## Deployment boundary
+
+Incident endpoints require workspace and actor headers, but this milestone does not authenticate
+them. Do not expose the API directly to an untrusted network. A trusted identity gateway must
+authenticate callers, remove caller-supplied identity headers, and inject only authorized
+workspace and actor context.

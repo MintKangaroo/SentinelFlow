@@ -1,7 +1,12 @@
 """PostgreSQL connection lifecycle and health probing."""
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 
 class Database:
@@ -9,11 +14,17 @@ class Database:
 
     def __init__(self, url: str) -> None:
         self._engine = create_async_engine(url, pool_pre_ping=True)
+        self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
 
     @property
     def engine(self) -> AsyncEngine:
         """Expose the engine for future repository adapters."""
         return self._engine
+
+    @property
+    def session_factory(self) -> async_sessionmaker[AsyncSession]:
+        """Create isolated sessions for application unit-of-work adapters."""
+        return self._session_factory
 
     async def check(self) -> None:
         """Raise when PostgreSQL is not ready to accept a simple query."""
