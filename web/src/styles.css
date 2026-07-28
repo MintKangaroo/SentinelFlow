@@ -46,7 +46,7 @@ h1 { margin: 0; max-width: 780px; font-size: clamp(42px, 6vw, 78px); line-height
 
 .boundaries { padding: 80px 0 92px; }
 .section-heading h2 { margin: 0 0 40px; font-size: 32px; letter-spacing: -0.04em; }
-.boundary-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #294258; border-left: 1px solid #294258; }
+.boundary-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #294258; border-left: 1px solid #294258; }
 .boundary-grid article { min-height: 190px; padding: 24px; border-right: 1px solid #294258; border-bottom: 1px solid #294258; background: rgba(9, 21, 34, 0.52); }
 .boundary-grid article:hover { background: rgba(20, 49, 61, 0.65); }
 .index { color: #42627b; font: 11px/1 "DM Mono", monospace; }

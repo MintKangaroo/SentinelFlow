@@ -5,6 +5,8 @@ import "./styles.css";
 
 const runtimeBoundaries = [
   { name: "Control API", role: "FastAPI command boundary" },
+  { name: "Incident Domain", role: "Lifecycle and append-only timeline" },
+  { name: "Adapter SDK", role: "Auth, retry, timeout, and circuit policy" },
   { name: "Workflow Worker", role: "Celery execution boundary" },
   { name: "State Store", role: "PostgreSQL system of record" },
   { name: "Coordination", role: "Redis broker and cache" },
@@ -31,7 +33,7 @@ export function App() {
           <span className="brand-mark" aria-hidden="true">S</span>
           <span>SentinelFlow</span>
         </a>
-        <span className="stage-chip">Foundation · Stage 01</span>
+        <span className="stage-chip">Control Plane · Stage 03</span>
       </header>
 
       <section className="hero" aria-labelledby="hero-title">
@@ -39,8 +41,8 @@ export function App() {
           <p className="eyebrow">SECURITY OPERATIONS CONTROL PLANE</p>
           <h1 id="hero-title">One control plane.<br />Every response boundary.</h1>
           <p className="hero-copy">
-            SentinelFlow will connect detection, analysis, approval, response,
-            validation, and reporting without duplicating the services behind them.
+            SentinelFlow connects auditable incident control with hardened service
+            adapters, while keeping every high-risk response behind explicit approval.
           </p>
         </div>
         <div className={`status-panel status-${state.toLowerCase()}`} role="status">
@@ -71,7 +73,7 @@ export function App() {
 
       <footer>
         <span>SentinelFlow v0.1.0</span>
-        <span>Domain workflows intentionally deferred</span>
+        <span>Incident lifecycle + adapter SDK ready</span>
       </footer>
     </main>
   );
