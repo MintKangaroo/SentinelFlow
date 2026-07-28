@@ -43,6 +43,7 @@
 - Frontend TypeScript 검사, Vitest 2개, Production Build: 통과
 - Docker Compose Config와 실제 Build/Health: 통과
 - README 실제 화면 캡처: `docs/assets/sentinelflow-stage-03.png`
+- CI Formatter 재현성을 위해 Ruff `0.15.22` 고정
 
 ## 즉시 다음 작업
 
