@@ -1,0 +1,44 @@
+<svg width="1200" height="300" viewBox="0 0 1200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#091725"/>
+      <stop offset="0.55" stop-color="#07111D"/>
+      <stop offset="1" stop-color="#0A2028"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(1007 104) rotate(153.4) scale(319 237)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#42DFC1" stop-opacity=".19"/>
+      <stop offset="1" stop-color="#42DFC1" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" stroke="#7690A6" stroke-opacity=".07"/>
+    </pattern>
+    <filter id="shadow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="13"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="300" rx="22" fill="url(#bg)"/>
+  <rect width="1200" height="300" rx="22" fill="url(#grid)"/>
+  <rect width="1200" height="300" rx="22" fill="url(#glow)"/>
+  <rect x=".75" y=".75" width="1198.5" height="298.5" rx="21.25" stroke="#29465A" stroke-width="1.5"/>
+  <g transform="translate(83 79)">
+    <circle cx="70" cy="70" r="61" fill="#42DFC1" fill-opacity=".08" stroke="#42DFC1" stroke-opacity=".28"/>
+    <circle cx="70" cy="70" r="40" fill="#42DFC1" fill-opacity=".08"/>
+    <path d="M70 31 36 45v24c0 22.4 13.6 40.1 34 49 20.4-8.9 34-26.6 34-49V45L70 31Z" stroke="#42DFC1" stroke-width="4" stroke-linejoin="round"/>
+    <path d="m55 70 10 10 21-23" stroke="#42DFC1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="70" cy="70" r="47" stroke="#42DFC1" stroke-opacity=".18" stroke-dasharray="3 7"/>
+  </g>
+  <g transform="translate(258 73)">
+    <text x="0" y="59" fill="#E5EFF8" font-family="Manrope, Inter, Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="-2">Sentinel<tspan fill="#42DFC1">Flow</tspan></text>
+    <text x="2" y="98" fill="#7D94A8" font-family="DM Mono, monospace" font-size="14" font-weight="500" letter-spacing="3.5">SECURITY OPERATIONS CONTROL PLANE</text>
+    <path d="M2 126H714" stroke="#284153"/>
+    <text x="2" y="159" fill="#9BB0C1" font-family="Manrope, Inter, Arial, sans-serif" font-size="16">Detect → Investigate → Approve → Respond → Validate</text>
+  </g>
+  <g transform="translate(1050 145)">
+    <circle r="31" fill="#42DFC1" fill-opacity=".07" stroke="#42DFC1" stroke-opacity=".15"/>
+    <circle r="5" fill="#42DFC1"/>
+    <circle r="9" stroke="#42DFC1" stroke-opacity=".3"/>
+    <circle r="16" stroke="#42DFC1" stroke-opacity=".16"/>
+    <circle r="25" stroke="#42DFC1" stroke-opacity=".08"/>
+    <circle r="9" fill="#42DFC1" fill-opacity=".25" filter="url(#shadow)"/>
+  </g>
+</svg>

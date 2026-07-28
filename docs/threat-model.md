@@ -4,12 +4,12 @@
 
 - Workspace 데이터와 격리 경계
 - Alert, Incident, Timeline과 Evidence
-- 향후 Approval 결정, Action 입력·출력, Audit Event와 Report
+- Approval 결정, Workflow Action 입력·출력, Audit Event와 향후 Report
 - 허가된 대상 범위와 실행 권한
 - 불투명한 Integration Credential Reference
 - PostgreSQL과 Telemetry의 운영 Metadata
 
-## 3단계 신뢰 경계
+## 현재 신뢰 경계
 
 - Browser와 API 입력은 모두 신뢰하지 않는다.
 - Workspace와 Actor Header는 Identity Gateway가 인증 정보에 결합하기 전까지 신뢰하지 않는다.
@@ -56,6 +56,35 @@ Workspace에 결합하기 전에는 API를 신뢰할 수 없는 Client에 직접
 - Detached Response는 Authentication Header가 있는 Request 객체를 보존하지 않는다.
 - Trace Attribute에 URL Query, Request/Response Body와 Credential을 포함하지 않는다.
 
+## Playbook 통제
+
+- 모든 Playbook Query와 Revision은 UUID Workspace 범위를 포함한다.
+- Version과 Event 외래키는 Playbook ID와 Workspace ID를 함께 결합한다.
+- Revision은 생성 시 Canonical JSON SHA-256 Hash를 계산하고 이후 변경하지 않는다.
+- ORM Hook과 PostgreSQL Trigger가 Version과 Event Update/Delete를 거부한다.
+- Step은 선언적 Type과 제한된 Reference만 허용하고 실행 가능한 Expression을 받지 않는다.
+- High/Critical Action 앞에 Approval Step이 없으면 Definition을 거부한다.
+- High/Critical Action에 명시적인 Rollback이 없으면 Definition을 거부한다.
+- Publish와 Archive는 Expected Version, Actor, Idempotency Key를 요구한다.
+
+## Workflow 통제
+
+- Run, Step, Event의 모든 Query와 Mutation은 UUID Workspace 범위를 포함한다.
+- Incident, Playbook Revision, Run의 외래키는 Workspace ID를 함께 결합해 교차 Workspace
+  연결을 거부한다.
+- 실행 정의는 Run 생성 시 Immutable Revision ID와 SHA-256 Hash로 고정된다.
+- 명시적 상태 머신이 순서를 벗어난 Step 결과, 승인, 재시도, 보상 기록을 거부한다.
+- Retry는 최대 세 번이며 Timeout은 실패 Event와 안정적인 Error Code로 기록한다.
+- 고위험 Step 앞의 Approval 상태에서 실행을 멈추며 Actor의 결정을 Append-only Event로
+  남긴다.
+- 실패와 취소는 완료된 Rollback-capable Action을 역순으로 보상하도록 상태화한다.
+- Expected Version과 Workspace 범위 Idempotency Key가 중복 또는 오래된 Command를 거부한다.
+- ORM Hook과 PostgreSQL Trigger가 Workflow Event Update/Delete를 거부한다.
+
+Workflow Engine의 성공 상태는 제출된 Step 결과의 감사 가능한 기록이다. 현재 Worker가 외부
+Vendor Side Effect를 자동 실행하지 않으므로, Adapter Dispatcher를 연결할 때 Target Scope,
+Dry-run, Result Authenticity와 Delivery Semantics를 추가 검증해야 한다.
+
 ## 이후 단계의 필수 통제
 
 Inbound Webhook 또는 위험 작업을 출시하기 전에 다음 통제를 완료해야 한다.
@@ -66,7 +95,6 @@ Inbound Webhook 또는 위험 작업을 출시하기 전에 다음 통제를 완
 - 전역 Append-only Audit Event
 - 위험도 기반 Human Approval, 만료와 재승인
 - 변경 전 Mandatory Dry-run
-- Rollback과 Compensation
 - 승인된 대상 범위 검증
 
 AI 판단만으로 고위험 작업을 실행할 수 없다.

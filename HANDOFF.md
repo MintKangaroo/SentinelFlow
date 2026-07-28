@@ -1,81 +1,98 @@
 # SentinelFlow 인수인계
 
-이 문서는 세션이 바뀌어도 구현 상태와 다음 작업을 즉시 이어가기 위한 작업 기준서다.
-새 세션은 먼저 이 파일과 `git status --short --branch`, `git log --oneline -5`를 확인한다.
+이 문서는 다음 작업자가 현재 구현과 검증 상태를 빠르게 확인하기 위한 체크포인트다.
+작업을 시작할 때 `git status --short --branch`, `git log --oneline -5`와 함께 확인한다.
 
 ## 현재 체크포인트
 
 - 기준일: 2026-07-28
-- 현재 브랜치: `feat/integration-adapter-sdk`
-- 통합 기준: `develop`의 `bd53841`
-- 안정 브랜치: `main`의 `03a2c8c`
-- 진행 단계: 3단계 Integration Adapter SDK 구현 및 전체 검증 완료
-- 작업 트리: 커밋과 GitHub PR 통합 전 상태
+- 현재 브랜치: `feat/versioned-playbooks`
+- 통합 기준: `develop`의 `1fa1ac7`
+- Backend 기반: Platform, Incident Lifecycle, Integration Adapter SDK, Versioned Playbooks,
+  Auditable Workflow Engine
+- Frontend: SOC Dashboard, Live Incident/Playbook/Workflow API Client, deterministic demo mode
+- 작업 트리: Dashboard, Playbook, Workflow와 문서 개선이 아직 커밋되지 않은 상태
 
-## 완료된 단계
+## 구현된 기능
 
-| 단계 | 상태 | 핵심 커밋 또는 PR |
-| --- | --- | --- |
-| 1. 플랫폼 초기화 | 완료, `main`/`develop` 반영 | `03a2c8c`까지의 초기 커밋 |
-| 2. Incident 및 Timeline | 완료, `develop` 반영 | `acc3f2d`, PR #1, merge `bd53841` |
-| 3. Integration Adapter SDK | 구현·검증 완료, 통합 대기 | 이 브랜치에서 작업 중 |
+### Backend
 
-## 현재 구현 결정
+- FastAPI Async Control API, PostgreSQL, Redis/Celery, OpenTelemetry
+- Workspace 격리 Incident 생성·조회·목록·전이·Note·Timeline
+- 명시적 Incident 상태 머신, 낙관적 Version, Idempotency Key
+- ORM과 PostgreSQL Trigger로 보호되는 Append-only Timeline
+- 공통 Auth, Timeout, Retry, Circuit Breaker와 Secret Reference를 제공하는 Adapter SDK
+- Immutable Revision, Typed Step, Condition, Approval Ordering, Rollback을 갖춘 Playbook
+- Playbook 생성·조회·Revision·Publish·Archive·Append-only Event API
+- Immutable Revision Snapshot을 사용하는 Workflow Run/Step State Machine
+- Retry Budget, Timeout, Cancellation, Approval Gate와 Reverse Compensation
+- Workflow 생성·조회·시작·결과·Retry·Approval·Cancel·Compensation·Event API
+- Workspace 복합 FK, OCC, Idempotency와 Append-only Workflow Event
 
-- 외부 서비스 기능을 복제하지 않고 `sentinelflow.integrations`의 공통 REST 경계만 제공한다.
-- Credential은 원문 대신 UUID 기반 `CredentialReference`만 영속화할 수 있다.
-- `SecretManager`는 반드시 `workspace_id`와 CredentialReference를 함께 받아 비밀을 해석한다.
-- HTTPS origin을 기본 강제하며 base URL credential/query/fragment/path를 거부한다.
-- Redirect를 따라가지 않고 요청 경로가 고정 origin을 벗어나지 못하게 한다.
-- Bearer, API Key, Basic, No Auth 전략을 공통 제공한다.
-- GET 등 멱등 메서드는 transient 오류에 재시도할 수 있다.
-- POST 같은 비멱등 요청은 idempotency key가 있을 때만 재시도한다.
-- timeout은 HTTP 연결 단계와 전체 논리 연산 양쪽에 적용한다.
-- Circuit Breaker 실패 횟수는 개별 retry가 아니라 최종 논리 호출 단위로 집계한다.
-- 오류 메시지에는 Credential, 응답 본문, 내부 transport 상세를 포함하지 않는다.
+### Operations Dashboard
 
-## 현재 검증 상태
+- Overview Metrics, Incident Queue, Response Posture, Live Timeline
+- Incident 검색·심각도 필터·상세 Inspector
+- Incident 생성과 다음 허용 상태로의 Lifecycle 전이
+- `awaiting_approval` Incident의 승인 UI
+- Integration 정책 및 상태 View
+- Playbook Library, Definition Inspector와 Publish 동작
+- Workflow Execution Ledger, Run Inspector와 현재 Approval Step 동작
+- Loading, Empty, API Error, Responsive Navigation
+- `?demo=1` 결정적 재현 모드
+- `?demo=1&view=incidents`, `approvals`, `playbooks`, `workflows`, `integrations` 직접 진입
 
-- 신규 SDK Ruff: 통과
-- 신규 SDK mypy strict: 통과
-- 전체 Backend 테스트: 86개 통과
-- 전체 Coverage: 95.11%
-- Frontend TypeScript 검사, Vitest 2개, Production Build: 통과
-- Docker Compose Config와 실제 Build/Health: 통과
-- README 실제 화면 캡처: `docs/assets/sentinelflow-stage-03.png`
-- CI Formatter 재현성을 위해 Ruff `0.15.22` 고정
+### 문서와 자산
 
-## 즉시 다음 작업
+- `README.md`: Banner, Badge, 실제 Dashboard 화면, Architecture, Quick Start, Security,
+  Quality Gate와 Roadmap
+- `docs/assets/sentinelflow-dashboard.png`: 메인 Overview 실제 렌더링
+- `docs/assets/sentinelflow-incident-workspace.png`: Incident Workspace 실제 렌더링
+- `docs/assets/sentinelflow-approval-queue.png`: Approval Queue 실제 렌더링
+- `docs/assets/sentinelflow-playbooks.png`: Versioned Playbook 실제 렌더링
+- `docs/assets/sentinelflow-workflows.png`: Auditable Workflow 실제 렌더링
+- `docs/assets/sentinelflow-banner.svg`: GitHub README Banner
 
-1. `feat(integrations): add security service adapter SDK`로 커밋하고 GitHub에 push한다.
-2. `feat/integration-adapter-sdk → develop` PR을 만들고 CI 통과 후 병합한다.
-3. 최신 `develop`에서 4단계용 `feat/versioned-playbooks` 브랜치를 만든다.
+## 검증 상태
 
-## 남은 단계와 커밋 메시지
+- Ruff check: 통과
+- Ruff format check: 통과
+- mypy strict: 통과
+- Backend pytest: 103개 통과
+- Backend coverage: 91.31%
+- Frontend TypeScript: 통과
+- Frontend Vitest: 4개 통과
+- Frontend production build: 통과
+- Docker Compose config: 통과
+- PostgreSQL 17 Migration: 빈 DB에서 Head 적용, Workflow Table/FK/Check/Trigger 확인
+- API/Web Docker Image Build: 통과
+- Chromium 1440px 실제 렌더링: Overview, Incidents, Approvals, Playbooks, Workflows 확인
 
-1. `feat(playbook): add versioned response playbooks`
-2. `feat(workflow): implement auditable workflow execution`
-3. `feat(approval): add risk-based approval gates`
-4. `feat(integrations): connect detection and threat graph services`
-5. `feat(integrations): add RedMind analysis workflow`
-6. `feat(response): orchestrate Patchtower remediation`
-7. `feat(validation): add post-response security validation`
-8. `feat(ai-security): integrate model robustness assessments`
-9. `feat(web): add security operations dashboard`
-10. `test(e2e): add end-to-end incident response demo`
+호스트 기본 `python3`에는 개발 Dependency가 없다. Python 3.12 검사는 기존 `.venv312`를
+Python 3.12 Container에서 사용하며 `PYTHONPATH=/app/src`를 설정했다.
 
-각 단계는 기능 브랜치, 테스트, 문서, 커밋, push, `develop` 대상 PR, CI, 병합 순서로
-진행한다. 사용자에게 중간 선택을 요청하지 않고 안전한 기본값으로 계속 진행한다.
-`main`은 모든 단계가 통합되고 릴리스 검증이 끝나기 전까지 직접 변경하지 않는다.
+## 중요한 경계
 
-## README 및 화면 캡처 완료 조건
+- 데모 모드 지표와 Integration 상태는 문서·UI 검증 Fixture다.
+- 일반 경로는 Incident/Playbook/Workflow API를 사용하지만 Workspace와 Actor는 로컬 개발
+  기본값이다.
+- Approval 화면은 Incident Lifecycle 전이를 사용하며 독립 Approval Aggregate는 아직 없다.
+- Workflow Engine은 실행 상태와 감사 원장을 구현했지만 Celery Adapter Dispatcher는 아직
+  연결되지 않았다.
+- 실제 Vendor Adapter 실행과 Webhook Signature/Replay 방지는 아직 없다.
+- `responding` 상태는 Patchtower 작업이 실제 실행되었다는 의미가 아니다.
+- 운영 배포에는 Identity Gateway, TLS, Network Policy와 승인된 Secret Manager가 필요하다.
 
-- README는 한국어로 목적, 아키텍처, 보안 통제, 실행법, API, 개발법, 브랜치 전략,
-  로드맵, 제한사항을 설명한다.
-- 3단계 현재 화면의 실제 캡처를 먼저 추가한다.
-- 12단계 운영 대시보드가 완성되면 Incident Queue, SLA/MTTD/MTTR, Approval Queue,
-  Workflow Timeline 화면을 다시 캡처해 README 이미지를 교체하거나 추가한다.
-- 생성형 목업을 실제 화면처럼 사용하지 않는다.
+## 다음 작업
+
+1. Celery가 Current Step을 Adapter로 Dispatch하고 결과 API를 호출하도록 연결한다.
+2. Worker 중단 후 재개, Delivery Semantics와 Result Authenticity를 검증한다.
+3. 독립 Approval Aggregate와 다중 승인·만료·재승인 정책을 구현한다.
+4. 실제 Vendor Adapter에 Target Scope, Dry-run과 Credential Policy를 연결한다.
+5. Inbound Alert Webhook Signature와 Replay 방지를 구현한다.
+
+각 기능은 Domain → Application Port → Infrastructure → API → Dashboard → Test → Document
+순서로 완성하고, 아직 구현되지 않은 외부 실행을 UI에서 성공으로 표현하지 않는다.
 
 ## 전체 검증 명령
 
@@ -89,7 +106,3 @@ npm --prefix web test -- --run
 npm --prefix web run build
 docker compose config --quiet
 ```
-
-로컬 호스트의 `.venv312/bin/python`은 컨테이너 내부 `/usr/local/bin/python`을 가리키므로
-호스트에서 깨진 링크처럼 보인다. Python 검사는 저장소의 기존 Python 3.12 컨테이너
-환경 또는 CI에서 실행한다.

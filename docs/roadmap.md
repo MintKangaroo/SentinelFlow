@@ -3,17 +3,23 @@
 - [x] **Platform initialization** — API, worker, persistence, web, observability, Compose.
 - [x] **Incident and timeline** — lifecycle and append-only incident events.
 - [x] **Integration Adapter SDK** — auth, retry, timeout, circuit breaker, secret references.
-- [ ] **Playbook model** — versions, typed steps, conditions, and rollback definitions.
-- [ ] **Workflow engine** — explicit state machine, retries, timeout, cancellation, compensation.
+- [x] **Playbook model** — immutable versions, typed steps, declarative conditions,
+  definition hashes, approval ordering, and rollback definitions.
+- [x] **Workflow engine** — immutable revision snapshots, explicit state machine, retries,
+  timeout, cancellation, compensation, and append-only execution events.
+- [ ] **Workflow dispatch** — Celery delivery, Adapter invocation, result authentication, and
+  recovery after worker interruption.
 - [ ] **Human approval** — risk-based gates, multiple approvers, and expiration.
 - [ ] **Detection and graph integrations** — AI-SOC alert ingest and ThreatGraph enrichment.
 - [ ] **RedMind integration** — analysis, proposed actions, and evidence.
 - [ ] **Patchtower response** — dry-run, approval, execution, and rollback.
 - [ ] **AutoPentest validation** — authorized post-response attack-path verification.
 - [ ] **AIShield integration** — robustness assessment for AI-service incidents.
-- [ ] **Operations dashboard** — queues, SLA, metrics, timelines, approvals, and audit views.
+- [x] **Operations dashboard** — incident queue, metrics, timeline inspector, Playbook and
+  Workflow inspectors, approval and integration views, live API operations, and deterministic
+  demo mode.
 - [ ] **Integrated demo** — end-to-end mock incident response and report.
 
-Stage 3 is implemented on its feature branch. Each later milestone starts from the latest
-`develop` only after its predecessor has been implemented, tested, documented, and reviewed
-through the branch workflow.
+The platform foundation, Incident lifecycle, Adapter SDK, immutable Playbook model, auditable
+Workflow state engine, and Operations Dashboard are implemented. External Side Effects remain
+disabled until the Worker Dispatcher and Vendor-specific safety controls are connected.

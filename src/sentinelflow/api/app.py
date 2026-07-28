@@ -12,7 +12,9 @@ from sentinelflow import __version__
 from sentinelflow.api.errors import install_error_handlers
 from sentinelflow.api.health import router as health_router
 from sentinelflow.api.incidents import router as incident_router
-from sentinelflow.application import IncidentService
+from sentinelflow.api.playbooks import router as playbook_router
+from sentinelflow.api.workflows import router as workflow_router
+from sentinelflow.application import IncidentService, PlaybookService, WorkflowService
 from sentinelflow.config import Settings, get_settings
 from sentinelflow.infrastructure import Database, RedisCache
 from sentinelflow.observability import configure_telemetry
@@ -31,6 +33,8 @@ def create_app(
     settings: Settings | None = None,
     resources: RuntimeResources | None = None,
     incident_service: IncidentService | None = None,
+    playbook_service: PlaybookService | None = None,
+    workflow_service: WorkflowService | None = None,
 ) -> FastAPI:
     """Build an isolated SentinelFlow API instance."""
     runtime_settings = settings or get_settings()
@@ -61,6 +65,8 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.incident_service = incident_service
+    app.state.playbook_service = playbook_service
+    app.state.workflow_service = workflow_service
     app.state.tracer_provider = configure_telemetry(app, runtime_settings)
     install_error_handlers(app)
     if runtime_settings.cors_origins:
@@ -80,6 +86,8 @@ def create_app(
 
     app.include_router(health_router, prefix=runtime_settings.api_prefix)
     app.include_router(incident_router, prefix=runtime_settings.api_prefix)
+    app.include_router(playbook_router, prefix=runtime_settings.api_prefix)
+    app.include_router(workflow_router, prefix=runtime_settings.api_prefix)
 
     @app.get("/", response_model=ServiceInfo, tags=["system"])
     async def service_info() -> ServiceInfo:

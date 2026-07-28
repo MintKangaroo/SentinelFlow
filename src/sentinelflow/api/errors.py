@@ -1,10 +1,20 @@
-"""Stable HTTP error envelope for incident domain failures."""
+"""Stable HTTP error envelopes for safely reportable domain failures."""
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from sentinelflow.domain import IncidentError, IncidentNotFound
+from sentinelflow.domain import (
+    IncidentError,
+    IncidentNotFound,
+    InvalidPlaybookDefinition,
+    PlaybookError,
+    PlaybookNotFound,
+    PlaybookVersionNotFound,
+    WorkflowDependencyNotFound,
+    WorkflowError,
+    WorkflowNotFound,
+)
 
 
 class ErrorDetail(BaseModel):
@@ -28,6 +38,27 @@ def install_error_handlers(app: FastAPI) -> None:
         status_code = (
             status.HTTP_404_NOT_FOUND
             if isinstance(error, IncidentNotFound)
+            else status.HTTP_409_CONFLICT
+        )
+        response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
+        return JSONResponse(status_code=status_code, content=response.model_dump())
+
+    @app.exception_handler(PlaybookError)
+    async def handle_playbook_error(_request: Request, error: PlaybookError) -> JSONResponse:
+        if isinstance(error, (PlaybookNotFound, PlaybookVersionNotFound)):
+            status_code = status.HTTP_404_NOT_FOUND
+        elif isinstance(error, InvalidPlaybookDefinition):
+            status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        else:
+            status_code = status.HTTP_409_CONFLICT
+        response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
+        return JSONResponse(status_code=status_code, content=response.model_dump())
+
+    @app.exception_handler(WorkflowError)
+    async def handle_workflow_error(_request: Request, error: WorkflowError) -> JSONResponse:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if isinstance(error, (WorkflowNotFound, WorkflowDependencyNotFound))
             else status.HTTP_409_CONFLICT
         )
         response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
