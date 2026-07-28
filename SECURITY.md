@@ -31,3 +31,18 @@ Incident endpoints require workspace and actor headers, but this milestone does 
 them. Do not expose the API directly to an untrusted network. A trusted identity gateway must
 authenticate callers, remove caller-supplied identity headers, and inject only authorized
 workspace and actor context.
+
+## Integration Adapter boundary
+
+The Adapter SDK accepts opaque UUID credential references only. Secret-manager implementations
+must authorize every lookup using both `workspace_id` and the reference; storing resolved values
+in PostgreSQL, integration JSON, logs, traces, task payloads, or exception messages is prohibited.
+
+Outbound clients require a fixed HTTPS origin by default, reject credentials and paths in the
+configured base URL, reject absolute per-request URLs, do not follow redirects, and reserve
+authentication, workspace, correlation, and idempotency headers. Unsafe HTTP is available only
+through an explicit development opt-in.
+
+Retries are bounded. Non-idempotent requests are never retried without an idempotency key.
+These transport controls do not authorize an action: high-risk writes remain prohibited until
+workflow, human-approval, dry-run, and compensation controls are implemented.

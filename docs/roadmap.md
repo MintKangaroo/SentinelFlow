@@ -2,7 +2,7 @@
 
 - [x] **Platform initialization** — API, worker, persistence, web, observability, Compose.
 - [x] **Incident and timeline** — lifecycle and append-only incident events.
-- [ ] **Integration Adapter SDK** — auth, retry, timeout, circuit breaker, secret references.
+- [x] **Integration Adapter SDK** — auth, retry, timeout, circuit breaker, secret references.
 - [ ] **Playbook model** — versions, typed steps, conditions, and rollback definitions.
 - [ ] **Workflow engine** — explicit state machine, retries, timeout, cancellation, compensation.
 - [ ] **Human approval** — risk-based gates, multiple approvers, and expiration.
@@ -14,5 +14,6 @@
 - [ ] **Operations dashboard** — queues, SLA, metrics, timelines, approvals, and audit views.
 - [ ] **Integrated demo** — end-to-end mock incident response and report.
 
-Stage 2 is implemented on its feature branch. A later milestone begins only after its
-predecessor has been implemented, tested, and reviewed through the branch workflow.
+Stage 3 is implemented on its feature branch. Each later milestone starts from the latest
+`develop` only after its predecessor has been implemented, tested, documented, and reviewed
+through the branch workflow.
