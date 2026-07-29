@@ -43,7 +43,7 @@ async def incident_report(
         workspace_id=workspace_id, status=None, workflow_id=None, limit=200, offset=0
     )
     approval_items = [item for item in approval_items if item.incident_id == incident_id]
-    timeline = [
+    timeline: list[dict[str, object]] = [
         {
             "sequence": e.sequence,
             "type": e.event_type.value,
@@ -53,7 +53,7 @@ async def incident_report(
         }
         for e in events
     ]
-    approval_data = [
+    approval_data: list[dict[str, object]] = [
         {
             "id": str(a.id),
             "step_key": a.step_key,
