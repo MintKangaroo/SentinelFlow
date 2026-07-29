@@ -1,5 +1,5 @@
 from typing import Any, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from celery import Celery
@@ -13,7 +13,9 @@ from sentinelflow.infrastructure import (
     RedisWorkflowLeaseManager,
     build_vendor_executor,
 )
+from sentinelflow.infrastructure.vendor_runtime import EnvironmentSecretManager
 from sentinelflow.integrations import IntegrationConfigurationError
+from sentinelflow.integrations.credentials import CredentialReference, CredentialResolutionError
 from tests.unit.workflows.helpers import workflow_run
 
 
@@ -105,3 +107,15 @@ def test_vendor_runtime_fails_closed_and_builds_configured_registry() -> None:
         )
     )
     assert executor is not None
+
+
+@pytest.mark.asyncio
+async def test_environment_secret_manager_is_workspace_scoped() -> None:
+    workspace = UUID("11111111-1111-4111-8111-111111111111")
+    reference = CredentialReference(UUID("22222222-2222-4222-8222-222222222222"))
+    manager = EnvironmentSecretManager(workspace, {reference.reference_id: SecretStr("value")})
+    assert (
+        await manager.resolve(workspace_id=workspace, reference=reference)
+    ).get_secret_value() == "value"
+    with pytest.raises(CredentialResolutionError):
+        await manager.resolve(workspace_id=uuid4(), reference=reference)
