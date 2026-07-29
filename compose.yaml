@@ -42,6 +42,8 @@ services:
       SENTINELFLOW_ENVIRONMENT: development
       SENTINELFLOW_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinelflow}:${POSTGRES_PASSWORD:-sentinelflow-dev-only}@postgres:5432/${POSTGRES_DB:-sentinelflow}
       SENTINELFLOW_REDIS_URL: redis://redis:6379/0
+      SENTINELFLOW_WORKFLOW_EXECUTION_MODE: dry_run
+      SENTINELFLOW_WORKFLOW_RESULT_SIGNING_KEY: ${WORKFLOW_RESULT_SIGNING_KEY:-sentinelflow-local-result-signing-key-change-before-production}
       SENTINELFLOW_OTEL_ENABLED: "true"
       SENTINELFLOW_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
@@ -68,8 +70,10 @@ services:
       SENTINELFLOW_ENVIRONMENT: development
       SENTINELFLOW_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinelflow}:${POSTGRES_PASSWORD:-sentinelflow-dev-only}@postgres:5432/${POSTGRES_DB:-sentinelflow}
       SENTINELFLOW_REDIS_URL: redis://redis:6379/0
+      SENTINELFLOW_WORKFLOW_EXECUTION_MODE: dry_run
+      SENTINELFLOW_WORKFLOW_RESULT_SIGNING_KEY: ${WORKFLOW_RESULT_SIGNING_KEY:-sentinelflow-local-result-signing-key-change-before-production}
     depends_on:
-      postgres:
+      api:
         condition: service_healthy
       redis:
         condition: service_healthy

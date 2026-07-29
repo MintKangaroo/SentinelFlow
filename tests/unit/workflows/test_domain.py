@@ -3,7 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from sentinelflow.domain import (
+    ConditionOperator,
     InvalidWorkflowTransition,
+    StepCondition,
     WorkflowStatus,
     WorkflowStepStatus,
     WorkflowVersionConflict,
@@ -170,7 +172,7 @@ def test_cancellation_compensates_and_stale_version_is_rejected() -> None:
         expected_version=4,
     )
     workflow.request_cancel(tick(5), expected_version=5)
-    assert workflow.status is WorkflowStatus.COMPENSATING
+    assert workflow.status.value == WorkflowStatus.COMPENSATING.value
     workflow.record_compensation(
         step_key="isolate",
         succeeded=True,
@@ -179,3 +181,82 @@ def test_cancellation_compensates_and_stale_version_is_rejected() -> None:
         expected_version=6,
     )
     assert workflow.status.value == WorkflowStatus.CANCELLED.value
+
+
+def test_condition_skips_step_and_noncritical_failure_can_continue() -> None:
+    workflow = workflow_run()
+    workflow.steps[3].condition = StepCondition(
+        field="enrich.confidence",
+        operator=ConditionOperator.EQUALS,
+        value=0.9,
+    )
+    workflow.start(tick(1), 1)
+    workflow.record_step_result(
+        step_key="enrich",
+        succeeded=True,
+        output={"confidence": 0.5},
+        error_code=None,
+        occurred_at=tick(2),
+        expected_version=2,
+    )
+    workflow.record_approval(
+        step_key="approve",
+        approved=True,
+        occurred_at=tick(3),
+        expected_version=3,
+    )
+    workflow.record_step_result(
+        step_key="isolate",
+        succeeded=True,
+        output={},
+        error_code=None,
+        occurred_at=tick(4),
+        expected_version=4,
+    )
+    assert workflow.steps[3].status is WorkflowStepStatus.SKIPPED
+    assert workflow.status is WorkflowStatus.SUCCEEDED
+
+    continued = workflow_run()
+    continued.steps[0].continue_on_failure = True
+    continued.start(tick(1), 1)
+    continued.record_step_result(
+        step_key="enrich",
+        succeeded=False,
+        output={},
+        error_code="not_required",
+        retryable=False,
+        occurred_at=tick(2),
+        expected_version=2,
+    )
+    assert continued.status is WorkflowStatus.AWAITING_APPROVAL
+
+
+def test_cancellation_waits_for_running_action_then_compensates() -> None:
+    workflow = workflow_run()
+    workflow.start(tick(1), 1)
+    workflow.record_step_result(
+        step_key="enrich",
+        succeeded=True,
+        output={},
+        error_code=None,
+        occurred_at=tick(2),
+        expected_version=2,
+    )
+    workflow.record_approval(
+        step_key="approve",
+        approved=True,
+        occurred_at=tick(3),
+        expected_version=3,
+    )
+    workflow.request_cancel(tick(4), expected_version=4)
+    assert workflow.status is WorkflowStatus.RUNNING
+    assert workflow.steps[2].status is WorkflowStepStatus.RUNNING
+    workflow.record_step_result(
+        step_key="isolate",
+        succeeded=True,
+        output={},
+        error_code=None,
+        occurred_at=tick(5),
+        expected_version=5,
+    )
+    assert workflow.status.value == WorkflowStatus.COMPENSATING.value

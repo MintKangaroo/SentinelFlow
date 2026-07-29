@@ -6,10 +6,13 @@ from enum import StrEnum
 from uuid import UUID
 
 from sentinelflow.domain.playbook import (
+    ConditionOperator,
     JsonObject,
+    JsonValue,
     PlaybookStepKind,
     PlaybookStepRisk,
     RollbackStrategy,
+    StepCondition,
 )
 
 
@@ -92,6 +95,13 @@ class WorkflowIdempotencyConflict(WorkflowError):
         super().__init__("Idempotency key was already used for a different workflow operation")
 
 
+class InvalidWorkflowResultToken(WorkflowError):
+    code = "invalid_workflow_result_token"
+
+    def __init__(self) -> None:
+        super().__init__("Workflow result token is invalid or expired")
+
+
 class ConcurrentWorkflowWrite(WorkflowError):
     code = "concurrent_workflow_write"
 
@@ -117,6 +127,11 @@ class WorkflowStepRun:
     max_attempts: int
     rollback_strategy: RollbackStrategy | None
     rollback_operation: str | None
+    parameters: JsonObject = field(default_factory=dict)
+    continue_on_failure: bool = False
+    condition: StepCondition | None = None
+    rollback_parameters: JsonObject = field(default_factory=dict)
+    rollback_timeout_seconds: int = 300
     status: WorkflowStepStatus = WorkflowStepStatus.PENDING
     attempt: int = 0
     output: JsonObject = field(default_factory=dict)
@@ -183,6 +198,7 @@ class WorkflowRun:
         error_code: str | None,
         occurred_at: datetime,
         expected_version: int,
+        retryable: bool = True,
     ) -> None:
         """Record the current adapter step result and choose the next boundary."""
         self._expect_version(expected_version)
@@ -195,14 +211,22 @@ class WorkflowRun:
         step.finished_at = occurred_at
         if succeeded:
             step.status = WorkflowStepStatus.SUCCEEDED
-            self._activate_next(occurred_at)
+            if self.cancel_requested:
+                self._finish_cancellation(occurred_at)
+            else:
+                self._activate_next(occurred_at)
         else:
             step.status = WorkflowStepStatus.FAILED
             step.last_error_code = error_code or "step_failed"
-            self.status = WorkflowStatus.FAILED
-            self.finished_at = occurred_at
-            if step.attempt >= step.max_attempts:
-                self._begin_compensation(occurred_at)
+            if self.cancel_requested:
+                self._finish_cancellation(occurred_at)
+            elif step.continue_on_failure:
+                self._activate_next(occurred_at)
+            else:
+                self.status = WorkflowStatus.FAILED
+                self.finished_at = occurred_at
+                if not retryable or step.attempt >= step.max_attempts:
+                    self._begin_compensation(occurred_at)
         self._advance_version(occurred_at)
 
     def retry_step(self, *, step_key: str, occurred_at: datetime, expected_version: int) -> None:
@@ -259,15 +283,17 @@ class WorkflowRun:
         for step in self.steps:
             if step.status in {
                 WorkflowStepStatus.PENDING,
-                WorkflowStepStatus.RUNNING,
                 WorkflowStepStatus.WAITING_APPROVAL,
-            }:
+            } or (
+                step.status is WorkflowStepStatus.RUNNING
+                and step.kind is not PlaybookStepKind.ACTION
+            ):
                 step.status = WorkflowStepStatus.SKIPPED
                 step.finished_at = occurred_at
-        self._begin_compensation(occurred_at)
-        if self.status is not WorkflowStatus.COMPENSATING:
-            self.status = WorkflowStatus.CANCELLED
-            self.finished_at = occurred_at
+        if any(step.status is WorkflowStepStatus.RUNNING for step in self.steps):
+            self.status = WorkflowStatus.RUNNING
+        else:
+            self._finish_cancellation(occurred_at)
         self._advance_version(occurred_at)
 
     def record_compensation(
@@ -327,29 +353,41 @@ class WorkflowRun:
         return step.step_key
 
     def _activate_next(self, occurred_at: datetime) -> None:
-        next_step = next(
-            (
-                step
-                for step in sorted(self.steps, key=lambda candidate: candidate.position)
-                if step.status is WorkflowStepStatus.PENDING
-            ),
-            None,
-        )
-        if next_step is None:
-            self.status = WorkflowStatus.SUCCEEDED
-            self.finished_at = occurred_at
+        while True:
+            next_step = next(
+                (
+                    step
+                    for step in sorted(self.steps, key=lambda candidate: candidate.position)
+                    if step.status is WorkflowStepStatus.PENDING
+                ),
+                None,
+            )
+            if next_step is None:
+                self.status = WorkflowStatus.SUCCEEDED
+                self.finished_at = occurred_at
+                return
+            if not self._condition_matches(next_step):
+                next_step.status = WorkflowStepStatus.SKIPPED
+                next_step.finished_at = occurred_at
+                continue
+            if next_step.kind is PlaybookStepKind.APPROVAL:
+                next_step.status = WorkflowStepStatus.WAITING_APPROVAL
+                next_step.started_at = occurred_at
+                self.status = WorkflowStatus.AWAITING_APPROVAL
+                return
+            next_step.start(occurred_at)
+            self.status = WorkflowStatus.RUNNING
             return
-        if next_step.kind is PlaybookStepKind.APPROVAL:
-            next_step.status = WorkflowStepStatus.WAITING_APPROVAL
-            next_step.started_at = occurred_at
-            self.status = WorkflowStatus.AWAITING_APPROVAL
-            return
-        next_step.start(occurred_at)
-        self.status = WorkflowStatus.RUNNING
 
     def _begin_compensation(self, occurred_at: datetime) -> None:
         if self._activate_compensation(occurred_at):
             self.status = WorkflowStatus.COMPENSATING
+
+    def _finish_cancellation(self, occurred_at: datetime) -> None:
+        self._begin_compensation(occurred_at)
+        if self.status is not WorkflowStatus.COMPENSATING:
+            self.status = WorkflowStatus.CANCELLED
+            self.finished_at = occurred_at
 
     def _activate_compensation(self, occurred_at: datetime) -> bool:
         candidate = next(
@@ -374,6 +412,41 @@ class WorkflowRun:
         if step is None:
             raise InvalidWorkflowTransition("Workflow step does not exist")
         return step
+
+    def _condition_matches(self, step: WorkflowStepRun) -> bool:
+        if step.condition is None:
+            return True
+        missing = object()
+        current: JsonValue | object = {
+            item.step_key: item.output for item in self.steps if item.position < step.position
+        }
+        parts = step.condition.field.split(".")
+        if parts[0] == "steps":
+            parts = parts[1:]
+        for part in parts:
+            if not isinstance(current, dict) or part not in current:
+                current = missing
+                break
+            current = current[part]
+        operator = step.condition.operator
+        if operator is ConditionOperator.EXISTS:
+            return current is not missing
+        if current is missing:
+            return False
+        if operator is ConditionOperator.EQUALS:
+            return current == step.condition.value
+        if operator is ConditionOperator.NOT_EQUALS:
+            return current != step.condition.value
+        if operator is ConditionOperator.IN:
+            return isinstance(step.condition.value, list) and current in step.condition.value
+        if operator is ConditionOperator.CONTAINS:
+            if isinstance(current, str):
+                return isinstance(step.condition.value, str) and step.condition.value in current
+            if isinstance(current, list):
+                return step.condition.value in current
+            if isinstance(current, dict):
+                return isinstance(step.condition.value, str) and step.condition.value in current
+        return False
 
     def _expect_version(self, expected_version: int) -> None:
         if self.version != expected_version:

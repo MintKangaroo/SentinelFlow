@@ -5,9 +5,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from sentinelflow.domain import (
+    ApprovalDependencyNotFound,
+    ApprovalError,
+    ApprovalNotFound,
     IncidentError,
     IncidentNotFound,
+    InvalidApprovalPolicy,
     InvalidPlaybookDefinition,
+    InvalidWorkflowResultToken,
     PlaybookError,
     PlaybookNotFound,
     PlaybookVersionNotFound,
@@ -43,6 +48,17 @@ def install_error_handlers(app: FastAPI) -> None:
         response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
         return JSONResponse(status_code=status_code, content=response.model_dump())
 
+    @app.exception_handler(ApprovalError)
+    async def handle_approval_error(_request: Request, error: ApprovalError) -> JSONResponse:
+        if isinstance(error, (ApprovalNotFound, ApprovalDependencyNotFound)):
+            status_code = status.HTTP_404_NOT_FOUND
+        elif isinstance(error, InvalidApprovalPolicy):
+            status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        else:
+            status_code = status.HTTP_409_CONFLICT
+        response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
+        return JSONResponse(status_code=status_code, content=response.model_dump())
+
     @app.exception_handler(PlaybookError)
     async def handle_playbook_error(_request: Request, error: PlaybookError) -> JSONResponse:
         if isinstance(error, (PlaybookNotFound, PlaybookVersionNotFound)):
@@ -56,10 +72,11 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(WorkflowError)
     async def handle_workflow_error(_request: Request, error: WorkflowError) -> JSONResponse:
-        status_code = (
-            status.HTTP_404_NOT_FOUND
-            if isinstance(error, (WorkflowNotFound, WorkflowDependencyNotFound))
-            else status.HTTP_409_CONFLICT
-        )
+        if isinstance(error, (WorkflowNotFound, WorkflowDependencyNotFound)):
+            status_code = status.HTTP_404_NOT_FOUND
+        elif isinstance(error, InvalidWorkflowResultToken):
+            status_code = status.HTTP_401_UNAUTHORIZED
+        else:
+            status_code = status.HTTP_409_CONFLICT
         response = ErrorResponse(error=ErrorDetail(code=error.code, message=str(error)))
         return JSONResponse(status_code=status_code, content=response.model_dump())

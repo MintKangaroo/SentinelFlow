@@ -27,9 +27,20 @@ from sentinelflow.integrations.policies import (
     RetryPolicy,
     TimeoutPolicy,
 )
+from sentinelflow.integrations.vendors import (
+    AIShieldAdapter,
+    AISOCAdapter,
+    AutoPentestAdapter,
+    PatchtowerAdapter,
+    RedMindAdapter,
+    SecurityServiceAdapter,
+    ThreatGraphAdapter,
+)
 
 __all__ = [
     "APIKeyAuthentication",
+    "AISOCAdapter",
+    "AIShieldAdapter",
     "AdapterConfig",
     "AdapterHTTPError",
     "AdapterRequestContext",
@@ -37,6 +48,7 @@ __all__ = [
     "AdapterResponse",
     "AdapterTimeoutError",
     "AdapterTransportError",
+    "AutoPentestAdapter",
     "AuthenticationStrategy",
     "BasicAuthentication",
     "BearerTokenAuthentication",
@@ -50,8 +62,12 @@ __all__ = [
     "IntegrationError",
     "IntegrationHTTPClient",
     "NoAuthentication",
+    "PatchtowerAdapter",
+    "RedMindAdapter",
     "RESTAdapter",
     "RetryPolicy",
     "SecretManager",
+    "SecurityServiceAdapter",
+    "ThreatGraphAdapter",
     "TimeoutPolicy",
 ]

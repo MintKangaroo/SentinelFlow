@@ -1,5 +1,21 @@
 """Framework-independent SentinelFlow domain model."""
 
+from sentinelflow.domain.approval import (
+    ApprovalDecision,
+    ApprovalDecisionValue,
+    ApprovalDependencyNotFound,
+    ApprovalError,
+    ApprovalEvent,
+    ApprovalEventType,
+    ApprovalIdempotencyConflict,
+    ApprovalNotFound,
+    ApprovalRequest,
+    ApprovalStatus,
+    ApprovalVersionConflict,
+    ConcurrentApprovalWrite,
+    InvalidApprovalPolicy,
+    InvalidApprovalTransition,
+)
 from sentinelflow.domain.incident import (
     ConcurrentIncidentWrite,
     IdempotencyConflict,
@@ -37,6 +53,7 @@ from sentinelflow.domain.playbook import (
 )
 from sentinelflow.domain.workflow import (
     ConcurrentWorkflowWrite,
+    InvalidWorkflowResultToken,
     InvalidWorkflowTransition,
     WorkflowDependencyNotFound,
     WorkflowError,
@@ -52,6 +69,20 @@ from sentinelflow.domain.workflow import (
 )
 
 __all__ = [
+    "ApprovalDecision",
+    "ApprovalDecisionValue",
+    "ApprovalDependencyNotFound",
+    "ApprovalError",
+    "ApprovalEvent",
+    "ApprovalEventType",
+    "ApprovalIdempotencyConflict",
+    "ApprovalNotFound",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    "ApprovalVersionConflict",
+    "ConcurrentApprovalWrite",
+    "InvalidApprovalPolicy",
+    "InvalidApprovalTransition",
     "ConcurrentIncidentWrite",
     "IdempotencyConflict",
     "Incident",
@@ -84,6 +115,7 @@ __all__ = [
     "RollbackStrategy",
     "StepCondition",
     "ConcurrentWorkflowWrite",
+    "InvalidWorkflowResultToken",
     "InvalidWorkflowTransition",
     "WorkflowDependencyNotFound",
     "WorkflowError",

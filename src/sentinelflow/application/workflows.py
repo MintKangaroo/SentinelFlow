@@ -100,6 +100,15 @@ class WorkflowService:
                     rollback_operation=(
                         step.rollback.operation if step.rollback is not None else None
                     ),
+                    parameters=step.parameters,
+                    continue_on_failure=step.continue_on_failure,
+                    condition=step.condition,
+                    rollback_parameters=(
+                        step.rollback.parameters if step.rollback is not None else {}
+                    ),
+                    rollback_timeout_seconds=(
+                        step.rollback.timeout_seconds if step.rollback is not None else 300
+                    ),
                 )
                 for position, step in enumerate(revision.steps)
             ]
@@ -191,6 +200,7 @@ class WorkflowService:
         expected_version: int,
         actor_id: str,
         idempotency_key: str,
+        retryable: bool = True,
     ) -> WorkflowRun:
         data: JsonObject = {
             "step_key": step_key,
@@ -198,6 +208,7 @@ class WorkflowService:
             "output": output,
             "error_code": error_code,
             "expected_version": expected_version,
+            "retryable": retryable,
         }
         return await self._mutate(
             workspace_id=workspace_id,
@@ -216,6 +227,7 @@ class WorkflowService:
                 error_code=error_code,
                 occurred_at=now,
                 expected_version=expected_version,
+                retryable=retryable,
             ),
         )
 

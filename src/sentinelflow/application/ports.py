@@ -6,6 +6,10 @@ from typing import Protocol, Self
 from uuid import UUID
 
 from sentinelflow.domain import (
+    ApprovalDecision,
+    ApprovalEvent,
+    ApprovalRequest,
+    ApprovalStatus,
     Incident,
     IncidentEvent,
     IncidentStatus,
@@ -178,6 +182,65 @@ class WorkflowUnitOfWork(Protocol):
     """Atomic transaction boundary for workflow commands."""
 
     workflows: WorkflowRepository
+
+    async def __aenter__(self) -> Self: ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+
+    async def commit(self) -> None: ...
+
+
+class ApprovalRepository(Protocol):
+    """Workspace-scoped persistence for approval aggregates and immutable decisions."""
+
+    async def add(self, approval: ApprovalRequest, event: ApprovalEvent) -> None: ...
+
+    async def get(
+        self, workspace_id: UUID, approval_id: UUID, *, for_update: bool = False
+    ) -> ApprovalRequest | None: ...
+
+    async def list(
+        self,
+        workspace_id: UUID,
+        *,
+        status: ApprovalStatus | None,
+        workflow_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> Sequence[ApprovalRequest]: ...
+
+    async def save(self, approval: ApprovalRequest, *, previous_version: int) -> None: ...
+
+    async def add_decision(self, decision: ApprovalDecision) -> None: ...
+
+    async def add_event(self, event: ApprovalEvent) -> None: ...
+
+    async def resolve_workflow_step(
+        self,
+        workspace_id: UUID,
+        incident_id: UUID,
+        workflow_id: UUID,
+        step_key: str,
+    ) -> bool: ...
+
+    async def get_event_by_idempotency(
+        self, workspace_id: UUID, idempotency_key: str
+    ) -> ApprovalEvent | None: ...
+
+    async def list_events(
+        self, workspace_id: UUID, approval_id: UUID, *, limit: int
+    ) -> Sequence[ApprovalEvent]: ...
+
+
+class ApprovalUnitOfWork(Protocol):
+    """Atomic transaction boundary for an approval command."""
+
+    approvals: ApprovalRepository
 
     async def __aenter__(self) -> Self: ...
 

@@ -9,12 +9,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from sentinelflow import __version__
+from sentinelflow.api.approvals import router as approval_router
+from sentinelflow.api.detections import router as detection_router
 from sentinelflow.api.errors import install_error_handlers
 from sentinelflow.api.health import router as health_router
 from sentinelflow.api.incidents import router as incident_router
 from sentinelflow.api.playbooks import router as playbook_router
+from sentinelflow.api.reports import router as report_router
 from sentinelflow.api.workflows import router as workflow_router
-from sentinelflow.application import IncidentService, PlaybookService, WorkflowService
+from sentinelflow.application import (
+    ApprovalService,
+    DetectionService,
+    IncidentService,
+    PlaybookService,
+    WorkflowDispatchScheduler,
+    WorkflowResultTokenSigner,
+    WorkflowService,
+)
 from sentinelflow.config import Settings, get_settings
 from sentinelflow.infrastructure import Database, RedisCache
 from sentinelflow.observability import configure_telemetry
@@ -35,6 +46,10 @@ def create_app(
     incident_service: IncidentService | None = None,
     playbook_service: PlaybookService | None = None,
     workflow_service: WorkflowService | None = None,
+    approval_service: ApprovalService | None = None,
+    detection_service: DetectionService | None = None,
+    dispatch_scheduler: WorkflowDispatchScheduler | None = None,
+    workflow_result_signer: WorkflowResultTokenSigner | None = None,
 ) -> FastAPI:
     """Build an isolated SentinelFlow API instance."""
     runtime_settings = settings or get_settings()
@@ -67,6 +82,10 @@ def create_app(
     app.state.incident_service = incident_service
     app.state.playbook_service = playbook_service
     app.state.workflow_service = workflow_service
+    app.state.approval_service = approval_service
+    app.state.detection_service = detection_service
+    app.state.dispatch_scheduler = dispatch_scheduler
+    app.state.workflow_result_signer = workflow_result_signer
     app.state.tracer_provider = configure_telemetry(app, runtime_settings)
     install_error_handlers(app)
     if runtime_settings.cors_origins:
@@ -80,6 +99,8 @@ def create_app(
                 "X-Request-ID",
                 "X-Workspace-ID",
                 "X-Actor-ID",
+                "X-Actor-Role",
+                "X-Workflow-Result-Token",
                 "Idempotency-Key",
             ],
         )
@@ -88,6 +109,9 @@ def create_app(
     app.include_router(incident_router, prefix=runtime_settings.api_prefix)
     app.include_router(playbook_router, prefix=runtime_settings.api_prefix)
     app.include_router(workflow_router, prefix=runtime_settings.api_prefix)
+    app.include_router(approval_router, prefix=runtime_settings.api_prefix)
+    app.include_router(detection_router, prefix=runtime_settings.api_prefix)
+    app.include_router(report_router, prefix=runtime_settings.api_prefix)
 
     @app.get("/", response_model=ServiceInfo, tags=["system"])
     async def service_info() -> ServiceInfo:

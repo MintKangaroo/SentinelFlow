@@ -34,10 +34,7 @@ class WorkflowStepResultRequest(WorkflowMutationRequest):
     succeeded: bool
     output: JsonObject = Field(default_factory=dict)
     error_code: str | None = Field(default=None, max_length=100)
-
-
-class WorkflowApprovalRequest(WorkflowMutationRequest):
-    approved: bool
+    retryable: bool = False
 
 
 class WorkflowCompensationRequest(WorkflowMutationRequest):
@@ -58,6 +55,11 @@ class WorkflowStepResponse(BaseModel):
     max_attempts: int
     rollback_strategy: RollbackStrategy | None
     rollback_operation: str | None
+    parameters: JsonObject
+    continue_on_failure: bool
+    condition: JsonObject | None
+    rollback_parameters: JsonObject
+    rollback_timeout_seconds: int
     status: WorkflowStepStatus
     attempt: int
     output: JsonObject
@@ -80,6 +82,19 @@ class WorkflowStepResponse(BaseModel):
             max_attempts=step.max_attempts,
             rollback_strategy=step.rollback_strategy,
             rollback_operation=step.rollback_operation,
+            parameters=step.parameters,
+            continue_on_failure=step.continue_on_failure,
+            condition=(
+                {
+                    "field": step.condition.field,
+                    "operator": step.condition.operator.value,
+                    "value": step.condition.value,
+                }
+                if step.condition is not None
+                else None
+            ),
+            rollback_parameters=step.rollback_parameters,
+            rollback_timeout_seconds=step.rollback_timeout_seconds,
             status=step.status,
             attempt=step.attempt,
             output=step.output,

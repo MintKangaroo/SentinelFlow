@@ -1,11 +1,11 @@
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
 
 from sentinelflow.api import create_app
-from sentinelflow.application import PlaybookService
+from sentinelflow.application import PlaybookService, WorkflowResultTokenSigner
 from sentinelflow.config import Settings
 from sentinelflow.domain import IncidentSeverity
 from sentinelflow.infrastructure import SQLAlchemyPlaybookUnitOfWork
@@ -16,7 +16,7 @@ from tests.unit.playbooks.helpers import safe_response_steps
 
 
 @pytest.mark.asyncio
-async def test_workflow_api_create_start_result_and_approval(incident_runtime: Any) -> None:
+async def test_workflow_api_create_start_and_authenticated_result(incident_runtime: Any) -> None:
     workspace_id = uuid4()
     incident = await incident_runtime.service.create(
         workspace_id=workspace_id,
@@ -38,9 +38,11 @@ async def test_workflow_api_create_start_result_and_approval(incident_runtime: A
         actor_id="author",
         idempotency_key="api-workflow-playbook",
     )
+    signer = WorkflowResultTokenSigner("test-workflow-result-signing-key-32-bytes")
     app = create_app(
         settings=Settings(environment="test", cors_origins=[]),
         resources=RuntimeResources(database=incident_runtime.database, cache=FakeCache()),
+        workflow_result_signer=signer,
     )
     transport = httpx.ASGITransport(app=app)
     async with (
@@ -57,6 +59,12 @@ async def test_workflow_api_create_start_result_and_approval(incident_runtime: A
             },
         )
         workflow_id = created.json()["id"]
+        result_token = signer.issue(
+            workspace_id=workspace_id,
+            workflow_id=UUID(workflow_id),
+            step_key="enrich_asset",
+            purpose="result",
+        )
         started = await client.post(
             f"/api/v1/workflows/{workflow_id}/start",
             headers=write_headers(workspace_id, "api-workflow-start"),
@@ -64,17 +72,23 @@ async def test_workflow_api_create_start_result_and_approval(incident_runtime: A
         )
         enriched = await client.post(
             f"/api/v1/workflows/{workflow_id}/steps/enrich_asset/result",
-            headers=write_headers(workspace_id, "api-workflow-enrich"),
+            headers={
+                **write_headers(workspace_id, "api-workflow-enrich"),
+                "X-Workflow-Result-Token": result_token,
+            },
             json={
                 "expected_version": 2,
                 "succeeded": True,
                 "output": {"asset": "host-1"},
             },
         )
-        approved = await client.post(
-            f"/api/v1/workflows/{workflow_id}/steps/approve_isolation/approval",
-            headers=write_headers(workspace_id, "api-workflow-approve"),
-            json={"expected_version": 3, "approved": True},
+        invalid_result = await client.post(
+            f"/api/v1/workflows/{workflow_id}/steps/approve_isolation/result",
+            headers={
+                **write_headers(workspace_id, "api-workflow-invalid-result"),
+                "X-Workflow-Result-Token": result_token,
+            },
+            json={"expected_version": 3, "succeeded": True, "output": {}},
         )
         events = await client.get(
             f"/api/v1/workflows/{workflow_id}/events",
@@ -85,5 +99,5 @@ async def test_workflow_api_create_start_result_and_approval(incident_runtime: A
     assert created.json()["definition_hash"]
     assert started.json()["steps"][0]["status"] == "running"
     assert enriched.json()["status"] == "awaiting_approval"
-    assert approved.json()["steps"][2]["status"] == "running"
-    assert [event["sequence"] for event in events.json()] == [1, 2, 3, 4]
+    assert invalid_result.status_code == 401
+    assert [event["sequence"] for event in events.json()] == [1, 2, 3]

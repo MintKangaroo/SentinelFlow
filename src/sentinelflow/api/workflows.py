@@ -5,18 +5,25 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, status
 
-from sentinelflow.api.dependencies import get_workflow_service
+from sentinelflow.api.dependencies import (
+    get_dispatch_scheduler,
+    get_workflow_result_signer,
+    get_workflow_service,
+)
 from sentinelflow.api.errors import ErrorResponse
 from sentinelflow.api.workflow_schemas import (
     CreateWorkflowRequest,
-    WorkflowApprovalRequest,
     WorkflowCompensationRequest,
     WorkflowEventResponse,
     WorkflowMutationRequest,
     WorkflowResponse,
     WorkflowStepResultRequest,
 )
-from sentinelflow.application import WorkflowService
+from sentinelflow.application import (
+    WorkflowDispatchScheduler,
+    WorkflowResultTokenSigner,
+    WorkflowService,
+)
 from sentinelflow.domain import WorkflowStatus
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -27,7 +34,19 @@ IdempotencyHeader = Annotated[
     str,
     Header(alias="Idempotency-Key", min_length=1, max_length=200),
 ]
+ResultTokenHeader = Annotated[
+    str,
+    Header(alias="X-Workflow-Result-Token", min_length=16, max_length=2048),
+]
 WorkflowServiceDependency = Annotated[WorkflowService, Depends(get_workflow_service)]
+DispatchSchedulerDependency = Annotated[
+    WorkflowDispatchScheduler,
+    Depends(get_dispatch_scheduler),
+]
+ResultTokenSignerDependency = Annotated[
+    WorkflowResultTokenSigner,
+    Depends(get_workflow_result_signer),
+]
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     404: {"model": ErrorResponse, "description": "Workflow or dependency not found"},
@@ -115,8 +134,9 @@ async def start_workflow(
     actor_id: ActorHeader,
     idempotency_key: IdempotencyHeader,
     service: WorkflowServiceDependency,
+    scheduler: DispatchSchedulerDependency,
 ) -> WorkflowResponse:
-    return await _simple_mutation(
+    response = await _simple_mutation(
         operation="start",
         workflow_id=workflow_id,
         payload=payload,
@@ -125,6 +145,8 @@ async def start_workflow(
         idempotency_key=idempotency_key,
         service=service,
     )
+    await scheduler.schedule(workspace_id, workflow_id)
+    return response
 
 
 @router.post("/{workflow_id}/cancel", response_model=WorkflowResponse, responses=ERROR_RESPONSES)
@@ -135,8 +157,9 @@ async def cancel_workflow(
     actor_id: ActorHeader,
     idempotency_key: IdempotencyHeader,
     service: WorkflowServiceDependency,
+    scheduler: DispatchSchedulerDependency,
 ) -> WorkflowResponse:
-    return await _simple_mutation(
+    response = await _simple_mutation(
         operation="cancel",
         workflow_id=workflow_id,
         payload=payload,
@@ -145,6 +168,8 @@ async def cancel_workflow(
         idempotency_key=idempotency_key,
         service=service,
     )
+    await scheduler.schedule(workspace_id, workflow_id)
+    return response
 
 
 @router.post(
@@ -159,8 +184,17 @@ async def record_step_result(
     workspace_id: WorkspaceHeader,
     actor_id: ActorHeader,
     idempotency_key: IdempotencyHeader,
+    result_token: ResultTokenHeader,
     service: WorkflowServiceDependency,
+    signer: ResultTokenSignerDependency,
 ) -> WorkflowResponse:
+    signer.verify(
+        result_token,
+        workspace_id=workspace_id,
+        workflow_id=workflow_id,
+        step_key=step_key,
+        purpose="result",
+    )
     workflow = await service.record_step_result(
         workspace_id=workspace_id,
         workflow_id=workflow_id,
@@ -168,6 +202,7 @@ async def record_step_result(
         succeeded=payload.succeeded,
         output=payload.output,
         error_code=payload.error_code,
+        retryable=payload.retryable,
         expected_version=payload.expected_version,
         actor_id=actor_id,
         idempotency_key=idempotency_key,
@@ -201,32 +236,6 @@ async def retry_workflow_step(
 
 
 @router.post(
-    "/{workflow_id}/steps/{step_key}/approval",
-    response_model=WorkflowResponse,
-    responses=ERROR_RESPONSES,
-)
-async def record_workflow_approval(
-    workflow_id: UUID,
-    step_key: str,
-    payload: WorkflowApprovalRequest,
-    workspace_id: WorkspaceHeader,
-    actor_id: ActorHeader,
-    idempotency_key: IdempotencyHeader,
-    service: WorkflowServiceDependency,
-) -> WorkflowResponse:
-    workflow = await service.record_approval(
-        workspace_id=workspace_id,
-        workflow_id=workflow_id,
-        step_key=step_key,
-        approved=payload.approved,
-        expected_version=payload.expected_version,
-        actor_id=actor_id,
-        idempotency_key=idempotency_key,
-    )
-    return WorkflowResponse.from_domain(workflow)
-
-
-@router.post(
     "/{workflow_id}/steps/{step_key}/compensation",
     response_model=WorkflowResponse,
     responses=ERROR_RESPONSES,
@@ -238,8 +247,17 @@ async def record_workflow_compensation(
     workspace_id: WorkspaceHeader,
     actor_id: ActorHeader,
     idempotency_key: IdempotencyHeader,
+    result_token: ResultTokenHeader,
     service: WorkflowServiceDependency,
+    signer: ResultTokenSignerDependency,
 ) -> WorkflowResponse:
+    signer.verify(
+        result_token,
+        workspace_id=workspace_id,
+        workflow_id=workflow_id,
+        step_key=step_key,
+        purpose="compensation",
+    )
     workflow = await service.record_compensation(
         workspace_id=workspace_id,
         workflow_id=workflow_id,
@@ -265,8 +283,17 @@ async def timeout_workflow_step(
     workspace_id: WorkspaceHeader,
     actor_id: ActorHeader,
     idempotency_key: IdempotencyHeader,
+    result_token: ResultTokenHeader,
     service: WorkflowServiceDependency,
+    signer: ResultTokenSignerDependency,
 ) -> WorkflowResponse:
+    signer.verify(
+        result_token,
+        workspace_id=workspace_id,
+        workflow_id=workflow_id,
+        step_key=step_key,
+        purpose="timeout",
+    )
     workflow = await service.timeout_step(
         workspace_id=workspace_id,
         workflow_id=workflow_id,

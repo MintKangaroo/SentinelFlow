@@ -143,6 +143,21 @@ def test_step_and_condition_reject_executable_or_unsafe_values() -> None:
             operation="execute",
             parameters={},
         )
+    with pytest.raises(InvalidPlaybookDefinition, match="conditional"):
+        PlaybookStep(
+            key="approve",
+            name="Approve",
+            kind=PlaybookStepKind.APPROVAL,
+            risk=PlaybookStepRisk.HIGH,
+            adapter=None,
+            operation=None,
+            parameters={},
+            condition=StepCondition(
+                field="enrich.confidence",
+                operator=ConditionOperator.EQUALS,
+                value=True,
+            ),
+        )
     with pytest.raises(InvalidPlaybookDefinition, match="Only action"):
         PlaybookStep(
             key="validate",

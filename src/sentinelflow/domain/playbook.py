@@ -201,6 +201,8 @@ class PlaybookStep:
                 raise InvalidPlaybookDefinition("Approval steps cannot call an adapter operation")
             if self.rollback is not None:
                 raise InvalidPlaybookDefinition("Approval steps cannot define rollback")
+            if self.condition is not None:
+                raise InvalidPlaybookDefinition("Approval guard steps cannot be conditional")
             return
 
         if self.adapter is None or not REFERENCE_PATTERN.fullmatch(self.adapter):

@@ -31,10 +31,12 @@ from sqlalchemy.orm import Mapped, Mapper, mapped_column
 from sentinelflow.application.ports import WorkflowRepository
 from sentinelflow.domain import (
     ConcurrentWorkflowWrite,
+    ConditionOperator,
     PlaybookStepKind,
     PlaybookStepRisk,
     PlaybookVersion,
     RollbackStrategy,
+    StepCondition,
     WorkflowEvent,
     WorkflowEventType,
     WorkflowRun,
@@ -170,6 +172,10 @@ class WorkflowStepRecord(Base):
             "attempt >= 0",
             name="workflow_step_attempt_nonnegative",
         ),
+        CheckConstraint(
+            "rollback_timeout_seconds BETWEEN 1 AND 3600",
+            name="workflow_step_rollback_timeout",
+        ),
         UniqueConstraint("workflow_id", "position", name="uq_workflow_steps_position"),
         UniqueConstraint("workflow_id", "step_key", name="uq_workflow_steps_key"),
         Index(
@@ -194,6 +200,11 @@ class WorkflowStepRecord(Base):
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False)
     rollback_strategy: Mapped[RollbackStrategy | None] = mapped_column(ROLLBACK_STRATEGY_TYPE)
     rollback_operation: Mapped[str | None] = mapped_column(String(100))
+    parameters: Mapped[JsonObject] = mapped_column(JSON_DOCUMENT, nullable=False)
+    continue_on_failure: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    condition: Mapped[JsonObject | None] = mapped_column(JSON_DOCUMENT)
+    rollback_parameters: Mapped[JsonObject] = mapped_column(JSON_DOCUMENT, nullable=False)
+    rollback_timeout_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[WorkflowStepStatus] = mapped_column(WORKFLOW_STEP_STATUS_TYPE, nullable=False)
     attempt: Mapped[int] = mapped_column(Integer, nullable=False)
     output: Mapped[JsonObject] = mapped_column(JSON_DOCUMENT, nullable=False)
@@ -472,6 +483,19 @@ class SQLAlchemyWorkflowRepository:
             max_attempts=step.max_attempts,
             rollback_strategy=step.rollback_strategy,
             rollback_operation=step.rollback_operation,
+            parameters=step.parameters,
+            continue_on_failure=step.continue_on_failure,
+            condition=(
+                {
+                    "field": step.condition.field,
+                    "operator": step.condition.operator.value,
+                    "value": step.condition.value,
+                }
+                if step.condition is not None
+                else None
+            ),
+            rollback_parameters=step.rollback_parameters,
+            rollback_timeout_seconds=step.rollback_timeout_seconds,
             status=step.status,
             attempt=step.attempt,
             output=step.output,
@@ -511,6 +535,19 @@ class SQLAlchemyWorkflowRepository:
             max_attempts=record.max_attempts,
             rollback_strategy=record.rollback_strategy,
             rollback_operation=record.rollback_operation,
+            parameters=dict(record.parameters),
+            continue_on_failure=record.continue_on_failure,
+            condition=(
+                StepCondition(
+                    field=str(record.condition["field"]),
+                    operator=ConditionOperator(str(record.condition["operator"])),
+                    value=record.condition.get("value"),
+                )
+                if record.condition is not None
+                else None
+            ),
+            rollback_parameters=dict(record.rollback_parameters),
+            rollback_timeout_seconds=record.rollback_timeout_seconds,
             status=record.status,
             attempt=record.attempt,
             output=dict(record.output),

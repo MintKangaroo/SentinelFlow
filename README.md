@@ -74,7 +74,14 @@
 > [!NOTE]
 > 데모 모드의 Incident·지표·Integration 상태는 문서와 UI 검증을 위한 고정 데이터입니다.
 > 일반 경로(`/`)에서는 Incident, Playbook, Workflow 조회와 지원되는 Command를 실제 API로 처리합니다.
-> 독립 Approval Aggregate와 Vendor별 운영 Adapter는 로드맵에 따라 확장 중입니다.
+> 라이브 모드에서 외부 벤더를 호출하려면 `.env`의 `WORKFLOW_EXECUTION_MODE=external`과 각 벤더의 HTTPS URL/토큰을 설정해야 합니다. 기본값은 안전한 `dry_run`입니다.
+
+### 한눈에 보는 시스템 맵
+
+<p align="center"><img src="docs/assets/sentinelflow-system-map.svg" width="100%" alt="SentinelFlow detection to report system map" /></p>
+
+`Detect → Triage → Investigate → Approve → Respond → Validate → Report`의 각 경계가
+어떤 저장소와 보안 정책을 사용하는지 위 맵에서 한 번에 확인할 수 있습니다.
 
 ## ✨ SentinelFlow가 하는 일
 
@@ -154,8 +161,18 @@ Detect  →  Triage  →  Investigate  →  Approve  →  Respond  →  Validate
 - ORM Guard와 PostgreSQL Trigger가 보호하는 Append-only Workflow Event
 - Run 생성·목록·조회·시작·결과·재시도·승인·취소·보상·시간 초과 API
 
-현재 Workflow API는 내구성 있는 실행 상태와 감사 경계를 소유합니다. Celery가 Vendor
-Adapter를 호출하고 Step 결과를 되돌려주는 비동기 Dispatcher는 다음 통합 단계입니다.
+Celery Dispatcher는 Redis lease로 중복 전달을 막고, timeout·제한 retry·compensation을 적용합니다.
+승인 만료와 거부는 자동으로 실행을 중단시키며, 외부 모드에서는 allowlist된 Vendor Adapter만 호출합니다.
+
+### Detection / Approval / Report
+
+- AI-SOC webhook은 `timestamp.payload` HMAC 서명과 replay guard를 통과한 alert만 Incident로 생성
+- Approval Aggregate는 High/Critical 작업에 2인 quorum, 역할 제한, 자기 승인 방지, 만료/갱신 라운드를 적용
+- Incident Report API는 Timeline·Approval chain·Workflow step을 결정적으로 묶고 SHA-256 digest를 반환
+
+주요 운영 엔드포인트는 `POST /api/v1/detections/ai-soc` (서명된 탐지 수신),
+`GET /api/v1/reports/incidents/{incident_id}` (감사 리포트)입니다. 자세한 요청/응답은
+[API 계약](docs/api.md)을 확인하세요.
 
 ### Platform & web
 

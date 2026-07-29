@@ -139,6 +139,11 @@ export type WorkflowStep = {
   max_attempts: number;
   rollback_strategy: "compensate" | "restore" | null;
   rollback_operation: string | null;
+  parameters: Record<string, unknown>;
+  continue_on_failure: boolean;
+  condition: Record<string, unknown> | null;
+  rollback_parameters: Record<string, unknown>;
+  rollback_timeout_seconds: number;
   status: WorkflowStepStatus;
   attempt: number;
   output: Record<string, unknown>;
