@@ -7,19 +7,19 @@
   definition hashes, approval ordering, and rollback definitions.
 - [x] **Workflow engine** — immutable revision snapshots, explicit state machine, retries,
   timeout, cancellation, compensation, and append-only execution events.
-- [ ] **Workflow dispatch** — Celery delivery, Adapter invocation, result authentication, and
+- [x] **Workflow dispatch** — Celery delivery, Adapter invocation, result authentication, and
   recovery after worker interruption.
-- [ ] **Human approval** — risk-based gates, multiple approvers, and expiration.
-- [ ] **Detection and graph integrations** — AI-SOC alert ingest and ThreatGraph enrichment.
-- [ ] **RedMind integration** — analysis, proposed actions, and evidence.
-- [ ] **Patchtower response** — dry-run, approval, execution, and rollback.
-- [ ] **AutoPentest validation** — authorized post-response attack-path verification.
-- [ ] **AIShield integration** — robustness assessment for AI-service incidents.
+- [x] **Human approval** — risk-based gates, multiple approvers, and expiration.
+- [x] **Detection and graph integrations** — signed AI-SOC alert ingest and ThreatGraph adapter.
+- [x] **RedMind integration** — analysis, proposed actions, and sanitized evidence adapter.
+- [x] **Patchtower response** — dry-run, approval, execution, and rollback adapter.
+- [x] **AutoPentest validation** — authorized post-response attack-path verification adapter.
+- [x] **AIShield integration** — robustness assessment adapter.
 - [x] **Operations dashboard** — incident queue, metrics, timeline inspector, Playbook and
   Workflow inspectors, approval and integration views, live API operations, and deterministic
   demo mode.
-- [ ] **Integrated demo** — end-to-end mock incident response and report.
+- [x] **Integrated demo** — deterministic dashboard plus incident report projection and digest.
 
-The platform foundation, Incident lifecycle, Adapter SDK, immutable Playbook model, auditable
-Workflow state engine, and Operations Dashboard are implemented. External Side Effects remain
-disabled until the Worker Dispatcher and Vendor-specific safety controls are connected.
+The default local profile remains dry-run, while external side effects require explicit HTTPS
+vendor configuration, workspace binding, and secret references. This keeps the reproducible demo
+safe while making the production integration boundary executable and auditable.
