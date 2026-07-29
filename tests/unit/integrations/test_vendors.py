@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Coroutine
 from typing import cast
 from uuid import uuid4
 
@@ -16,7 +16,9 @@ from sentinelflow.integrations.models import AdapterRequestContext
 from sentinelflow.integrations.vendors import PatchtowerAdapter, ThreatGraphAdapter
 
 
-def client(handler: Callable[[httpx.Request], Awaitable[httpx.Response]]) -> IntegrationHTTPClient:
+def client(
+    handler: Callable[[httpx.Request], Coroutine[None, None, httpx.Response]],
+) -> IntegrationHTTPClient:
     transport = httpx.MockTransport(handler)
     return IntegrationHTTPClient(
         AdapterConfig(service_name="patchtower", base_url="https://vendor.test"),
