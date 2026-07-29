@@ -1,8 +1,8 @@
 # API
 
 The API exposes platform health, workspace-scoped Incident lifecycle and Timeline operations,
-immutable versioned response Playbooks, and auditable Workflow execution state. It does not
-yet ingest external alerts or dispatch response actions to Vendor Adapters.
+immutable response Playbooks, auditable Workflow execution, Approval governance, signed AI-SOC
+intake, and deterministic Incident Reports.
 
 ## Required headers
 
@@ -52,6 +52,16 @@ gateway and never expose the API directly to an untrusted network.
 | `POST` | `/api/v1/workflows/{id}/steps/{key}/compensation` | Record a compensation result |
 | `POST` | `/api/v1/workflows/{id}/steps/{key}/timeout` | Record an active Step timeout |
 | `GET` | `/api/v1/workflows/{id}/events` | Read the append-only execution history |
+| `POST` | `/api/v1/approvals` | Create a governed human approval request |
+| `GET` | `/api/v1/approvals` | List workspace approval requests |
+| `GET` | `/api/v1/approvals/{id}` | Read approval state and quorum |
+| `POST` | `/api/v1/approvals/{id}/decisions` | Record an RBAC-scoped approval decision |
+| `POST` | `/api/v1/approvals/{id}/expire` | Expire a pending request |
+| `POST` | `/api/v1/approvals/{id}/renew` | Open a new approval round |
+| `POST` | `/api/v1/approvals/{id}/cancel` | Cancel a request |
+| `GET` | `/api/v1/approvals/{id}/events` | Read immutable approval events |
+| `POST` | `/api/v1/detections/ai-soc` | Ingest a signed AI-SOC alert |
+| `GET` | `/api/v1/reports/incidents/{id}` | Build a report and SHA-256 digest |
 | `GET` | `/docs` | OpenAPI UI outside production |
 
 Mutations require `expected_version`. A stale version, an invalid lifecycle edge, or an
@@ -71,8 +81,9 @@ new ──> triaging ──> investigating ──> awaiting_approval ──> res
 closed ──> reopened
 ```
 
-A lifecycle transition only records Incident control-plane state. Workflow Approval is a
-separate execution gate, and Vendor-side action dispatch remains a later integration milestone.
+A lifecycle transition only records Incident control-plane state. Workflow Approval is a separate
+execution gate. The AI-SOC endpoint requires an HMAC-SHA256 signature over
+`timestamp + "." + raw_body`, rejects stale/replayed events, and creates an idempotent Incident.
 
 ## Playbook definition rules
 
@@ -105,6 +116,5 @@ Publish operation.
   sequenced, and append-only.
 - A replayed Idempotency Key returns the original result only for the same operation.
 
-These endpoints record durable orchestration state. A worker must call the appropriate Vendor
-Adapter and submit the outcome through the Step result endpoints; the current milestone does
-not itself perform external actions.
+These endpoints record durable orchestration state. The Celery worker calls the configured Vendor
+Adapter registry in `external` mode; `dry_run` remains the default local execution mode.

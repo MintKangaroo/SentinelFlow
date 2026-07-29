@@ -34,9 +34,10 @@ Step을 Vendor Adapter로 Dispatch한다. PostgreSQL은 내구성 있는 유일�
 - `?demo=1`은 서버 상태와 관계없이 동일한 운영 흐름을 재현하는 결정적 데이터셋을 사용한다.
   README 스크린샷과 UI 회귀 검증은 이 모드를 사용한다.
 
-Approval 화면은 현재 Incident의 `awaiting_approval → responding` 상태 전이를 사용한다.
-다중 승인자, 만료, 재승인 같은 독립 Approval 정책은 후속 Approval Aggregate에 구현한다.
-Integration 화면의 운영 상태는 데모 데이터이며 실제 Vendor Health API가 아니다.
+Approval 화면은 독립 Approval Aggregate의 quorum·역할·만료·갱신 정책을 표시한다.
+Incident의 `awaiting_approval → responding` 전이는 승인 결과를 반영하는 실행 상태이며,
+Approval 결정과 이벤트는 별도 append-only 원장으로 보존된다. Integration 화면의 운영 상태는
+데모 데이터이며 실제 Vendor Health API가 아니다.
 
 ## 내부 요청 흐름
 
@@ -111,8 +112,9 @@ Domain 정책은 FastAPI, SQLAlchemy, Celery, HTTPX, Vendor SDK에 의존하지 
 - Event는 Workspace 안에서 Idempotency Key가 유일하며 ORM Hook과 PostgreSQL Trigger가
   Update/Delete를 거부한다.
 
-현재 Workflow Engine은 내구성 있는 상태 전이와 감사 원장을 제공한다. Worker가 Adapter를
-호출해 외부 Side Effect를 만들고 결과 Command를 제출하는 Dispatcher는 별도 통합 경계다.
+Workflow Dispatcher는 Celery에서 Redis lease를 획득한 뒤 Adapter를 호출하고, timeout·제한
+retry·compensation 결과를 Workflow 원장에 기록한다. 외부 모드에서는 workspace에 바인딩된
+allowlist Adapter만 실행하며, 기본 모드는 side effect가 없는 dry-run이다.
 
 ## Incident 일관성
 

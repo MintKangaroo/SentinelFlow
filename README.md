@@ -297,8 +297,8 @@ curl http://localhost:8000/api/v1/incidents \
 | High-risk action guard | ✅ | 선행 Approval과 Rollback Domain Validation |
 | Auditable workflow state | ✅ | Snapshot + OCC + Append-only Event |
 | Bounded retry / timeout / compensation | ✅ | Explicit Workflow State Machine |
-| 독립 다중 승인 정책 | 🚧 | Approval Aggregate 단계 |
-| Webhook signature / replay 방어 | 🚧 | Detection Integration 단계 |
+| 독립 다중 승인 정책 | ✅ | Approval Aggregate quorum·RBAC·만료·갱신 |
+| Webhook signature / replay 방어 | ✅ | AI-SOC HMAC timestamp + replay guard |
 
 현재 `X-Workspace-ID`와 `X-Actor-ID`는 격리 문맥이지 인증 수단이 아닙니다. 운영 환경에서는
 신뢰할 수 있는 Identity Gateway가 외부 입력 Header를 제거하고 인증된 값을 주입해야 합니다.
