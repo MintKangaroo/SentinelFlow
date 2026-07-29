@@ -363,12 +363,16 @@ sentinelflow/
 - [x] SOC Operations Dashboard and deterministic demo
 - [x] Versioned response playbooks
 - [x] Auditable workflow state, retries, timeout and compensation
-- [ ] Celery workflow dispatch and external action execution
-- [ ] Risk-based multi-approver policy
-- [ ] AI-SOC, ThreatGraph and RedMind vendor adapters
-- [ ] Patchtower response orchestration
-- [ ] AutoPentest and AIShield validation
-- [ ] End-to-end incident report
+- [x] Celery workflow dispatch and external action execution boundary
+- [x] Risk-based multi-approver policy
+- [x] Signed AI-SOC intake and ThreatGraph/RedMind vendor adapters
+- [x] Patchtower response orchestration with dry-run receipt
+- [x] AutoPentest and AIShield validation adapters
+- [x] End-to-end incident report projection with SHA-256 digest
+
+> 외부 서비스의 실제 side effect는 기본적으로 꺼져 있습니다. `dry_run`은 즉시 재현할 수
+> 있고, `external`은 workspace binding과 각 벤더의 HTTPS URL·토큰을 명시적으로 설정한
+> 환경에서만 활성화됩니다.
 
 완료 조건과 단계별 설계는 [Roadmap](docs/roadmap.md)에서 확인할 수 있습니다.
 
