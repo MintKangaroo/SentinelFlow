@@ -45,9 +45,7 @@ async def test_signed_detection_creates_incident_and_rejects_replay(incident_run
 
 @pytest.mark.asyncio
 async def test_detection_rejects_stale_and_invalid_signatures(incident_runtime) -> None:
-    service = DetectionService(
-        incident_runtime.service, "detection-key-01234567890123456789012345"
-    )
+    service = DetectionService(incident_runtime.service, "detection-key-01234567890123456789012345")
     with pytest.raises(DetectionAuthenticationError):
         await service.ingest(
             workspace_id=uuid4(),
