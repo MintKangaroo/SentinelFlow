@@ -137,9 +137,7 @@ class AutoPentestAdapter(SecurityServiceAdapter):
         SecurityServiceAdapter._validate_target(parameters)
         authorization = parameters.get("authorization_ref")
         if not isinstance(authorization, str) or not _OPAQUE_TARGET.fullmatch(authorization):
-            raise IntegrationConfigurationError(
-                "AutoPentest requires an opaque authorization_ref"
-            )
+            raise IntegrationConfigurationError("AutoPentest requires an opaque authorization_ref")
 
 
 class AIShieldAdapter(SecurityServiceAdapter):

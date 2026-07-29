@@ -23,7 +23,8 @@ class DetectionPayload(BaseModel):
 
 
 @router.post("/ai-soc", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)
-async def ingest_ai_soc(request: Request,
+async def ingest_ai_soc(
+    request: Request,
     workspace_id: Annotated[UUID, Header(alias="X-Workspace-ID")],
     timestamp: Annotated[str, Header(alias="X-AI-SOC-Timestamp")],
     signature: Annotated[str, Header(alias="X-AI-SOC-Signature")],
@@ -32,7 +33,10 @@ async def ingest_ai_soc(request: Request,
     try:
         payload = DetectionPayload.model_validate(json.loads(raw))
         incident = await get_detection_service(request).ingest(
-            workspace_id=workspace_id, raw_body=raw, timestamp=timestamp, signature=signature,
+            workspace_id=workspace_id,
+            raw_body=raw,
+            timestamp=timestamp,
+            signature=signature,
             **payload.model_dump(),
         )
     except (ValueError, DetectionAuthenticationError) as exc:

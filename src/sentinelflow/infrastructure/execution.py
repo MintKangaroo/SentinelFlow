@@ -110,14 +110,17 @@ class VendorWorkflowStepExecutor:
                 f"Workflow adapter {adapter_name} is not registered"
             )
         resolved = cast(dict[str, object], self._resolve(parameters, workflow, step.position))
-        return cast(JsonObject, await adapter.execute(
-            operation,
-            resolved,
-            context=AdapterRequestContext(
-                workspace_id=workflow.workspace_id,
-                idempotency_key=idempotency_key,
+        return cast(
+            JsonObject,
+            await adapter.execute(
+                operation,
+                resolved,
+                context=AdapterRequestContext(
+                    workspace_id=workflow.workspace_id,
+                    idempotency_key=idempotency_key,
+                ),
             ),
-        ))
+        )
 
     def _resolve(
         self,
@@ -133,10 +136,7 @@ class VendorWorkflowStepExecutor:
                 if not isinstance(reference, str):
                     raise IntegrationConfigurationError("Parameter reference must be a string")
                 return self._resolve_reference(reference, workflow, position)
-            return {
-                key: self._resolve(item, workflow, position)
-                for key, item in value.items()
-            }
+            return {key: self._resolve(item, workflow, position) for key, item in value.items()}
         return value
 
     @staticmethod
