@@ -1,14 +1,19 @@
 from typing import Any, cast
+from uuid import UUID
 
 import pytest
 from celery import Celery
+from pydantic import SecretStr
 from redis.asyncio import Redis
 
+from sentinelflow.config import Settings
 from sentinelflow.infrastructure import (
     CeleryWorkflowDispatchScheduler,
     DryRunWorkflowStepExecutor,
     RedisWorkflowLeaseManager,
+    build_vendor_executor,
 )
+from sentinelflow.integrations import IntegrationConfigurationError
 from tests.unit.workflows.helpers import workflow_run
 
 
@@ -77,3 +82,26 @@ async def test_celery_scheduler_and_dry_run_executor_are_explicit() -> None:
     assert output["external_side_effect"] is False
     assert output["mode"] == "dry_run"
     assert rollback["operation"] == "endpoint.release"
+
+
+def test_vendor_runtime_fails_closed_and_builds_configured_registry() -> None:
+    with pytest.raises(IntegrationConfigurationError):
+        build_vendor_executor(Settings(environment="test"))
+    workspace = UUID("11111111-1111-4111-8111-111111111111")
+    with pytest.raises(IntegrationConfigurationError):
+        build_vendor_executor(
+            Settings(
+                environment="test",
+                integration_workspace_id=workspace,
+                patchtower_base_url="https://patchtower.test",
+            )
+        )
+    executor = build_vendor_executor(
+        Settings(
+            environment="test",
+            integration_workspace_id=workspace,
+            patchtower_base_url="https://patchtower.test",
+            patchtower_token=SecretStr("token-value"),
+        )
+    )
+    assert executor is not None

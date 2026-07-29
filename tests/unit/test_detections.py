@@ -58,3 +58,14 @@ async def test_detection_rejects_stale_and_invalid_signatures(incident_runtime: 
             timestamp="1",
             signature="bad",
         )
+    with pytest.raises(DetectionAuthenticationError):
+        await service.ingest(
+            workspace_id=uuid4(),
+            event_id="invalid",
+            title="Alert",
+            description="",
+            severity=IncidentSeverity.LOW,
+            raw_body=b"{}",
+            timestamp=str(int(time.time())),
+            signature="bad",
+        )
