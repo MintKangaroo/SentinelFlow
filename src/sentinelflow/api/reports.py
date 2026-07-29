@@ -40,8 +40,9 @@ async def incident_report(
         workspace_id=workspace_id, incident_id=incident_id, after_sequence=0, limit=500
     )
     approval_items = await approvals.list(
-        workspace_id=workspace_id, incident_id=incident_id, status=None, limit=200, offset=0
+        workspace_id=workspace_id, status=None, workflow_id=None, limit=200, offset=0
     )
+    approval_items = [item for item in approval_items if item.incident_id == incident_id]
     timeline = [
         {
             "sequence": e.sequence,
@@ -87,4 +88,11 @@ async def incident_report(
     digest = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
-    return IncidentReportResponse(**payload, digest=digest)
+    return IncidentReportResponse(
+        incident_id=incident.id,
+        summary=incident.title,
+        timeline=timeline,
+        approvals=approval_data,
+        workflows=workflow_data,
+        digest=digest,
+    )
