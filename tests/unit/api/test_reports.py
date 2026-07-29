@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
 
 from sentinelflow.api.reports import incident_report
+from sentinelflow.application import ApprovalService, IncidentService, WorkflowService
 
 
 @pytest.mark.asyncio
@@ -19,12 +21,15 @@ async def test_incident_report_contains_evidence_and_stable_digest() -> None:
         occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
         data={"severity": "high"},
     )
-    incident_service = SimpleNamespace(
-        get=lambda **_: _value(incident),
-        timeline=lambda **_: _value([event]),
+    incident_service = cast(
+        IncidentService,
+        SimpleNamespace(
+            get=lambda **_: _value(incident),
+            timeline=lambda **_: _value([event]),
+        ),
     )
-    approval_service = SimpleNamespace(list=lambda **_: _value([]))
-    workflow_service = SimpleNamespace()
+    approval_service = cast(ApprovalService, SimpleNamespace(list=lambda **_: _value([])))
+    workflow_service = cast(WorkflowService, SimpleNamespace())
     first = await incident_report(
         incident_id, workspace, incident_service, approval_service, workflow_service
     )
@@ -36,5 +41,5 @@ async def test_incident_report_contains_evidence_and_stable_digest() -> None:
     assert first.digest == second.digest
 
 
-async def _value(value):
+async def _value(value: Any) -> Any:
     return value

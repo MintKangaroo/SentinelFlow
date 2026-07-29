@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import time
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -10,7 +11,7 @@ from sentinelflow.domain import IncidentSeverity
 
 
 @pytest.mark.asyncio
-async def test_signed_detection_creates_incident_and_rejects_replay(incident_runtime) -> None:
+async def test_signed_detection_creates_incident_and_rejects_replay(incident_runtime: Any) -> None:
     webhook_key = "detection-key-01234567890123456789012345"
     service = DetectionService(incident_runtime.service, webhook_key)
     workspace = uuid4()
@@ -44,7 +45,7 @@ async def test_signed_detection_creates_incident_and_rejects_replay(incident_run
 
 
 @pytest.mark.asyncio
-async def test_detection_rejects_stale_and_invalid_signatures(incident_runtime) -> None:
+async def test_detection_rejects_stale_and_invalid_signatures(incident_runtime: Any) -> None:
     service = DetectionService(incident_runtime.service, "detection-key-01234567890123456789012345")
     with pytest.raises(DetectionAuthenticationError):
         await service.ingest(

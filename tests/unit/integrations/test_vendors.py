@@ -1,3 +1,5 @@
+from collections.abc import Awaitable, Callable
+from typing import cast
 from uuid import uuid4
 
 import httpx
@@ -8,16 +10,17 @@ from sentinelflow.integrations import (
     IntegrationConfigurationError,
     IntegrationHTTPClient,
     NoAuthentication,
+    SecretManager,
 )
 from sentinelflow.integrations.models import AdapterRequestContext
 from sentinelflow.integrations.vendors import PatchtowerAdapter, ThreatGraphAdapter
 
 
-def client(handler):
+def client(handler: Callable[[httpx.Request], Awaitable[httpx.Response]]) -> IntegrationHTTPClient:
     transport = httpx.MockTransport(handler)
     return IntegrationHTTPClient(
         AdapterConfig(service_name="patchtower", base_url="https://vendor.test"),
-        secret_manager=object(),
+        secret_manager=cast(SecretManager, object()),
         authentication=NoAuthentication(),
         http_client=httpx.AsyncClient(transport=transport, base_url="https://vendor.test"),
     )
