@@ -15,7 +15,8 @@ from sentinelflow.infrastructure import (
 )
 from sentinelflow.infrastructure.vendor_runtime import EnvironmentSecretManager
 from sentinelflow.integrations import IntegrationConfigurationError
-from sentinelflow.integrations.credentials import CredentialReference, CredentialResolutionError
+from sentinelflow.integrations.credentials import CredentialReference
+from sentinelflow.integrations.errors import CredentialResolutionError
 from tests.unit.workflows.helpers import workflow_run
 
 
